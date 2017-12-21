@@ -54,7 +54,14 @@ class ElasticsearchFilterCriteriaVisitor
     $this->setArrayForCriteria($criteria, $comp);
   }
   
-      
+  public function visitExistsCriteria($criteria)
+  {
+    $column = $this->getMapper()->getColumnForField($criteria->getField());
+    $comp = array('exists' => array('field' => $column));
+    $this->setArrayForCriteria($criteria, $comp);
+  }
+
+
   public function visitGreaterThanCriteria($criteria)
   {
     $column = $this->getMapper()->getColumnForField($criteria->getField());
@@ -126,7 +133,7 @@ class ElasticsearchFilterCriteriaVisitor
     $comp = array(
       'geo_distance' => array(
         'distance' => floatval($criteria->getMaximumDistance()),
-        'location' => array(
+        $column => array(
           'lat' => floatval($criteria->getLatitude()),
           'lon' => floatval($criteria->getLongitude())
         )
@@ -135,6 +142,25 @@ class ElasticsearchFilterCriteriaVisitor
     $this->setArrayForCriteria($criteria, $comp);
   }
   
+  public function visitWithinBoundingBoxCriteria($criteria)
+  {
+    $column = $this->getMapper()->getColumnForField($criteria->getGeometryField());
+    $comp = array(
+      'geo_bounding_box' => array(
+        $column => array(
+          'top_left' => array(
+            'lat' => floatval($this->topLeftLatitude),
+            'lon' => floatval($this->topLeftLongitude)
+          ),
+          'bottom_right' => array(
+            'lat' => floatval($this->bottomRightLatitude),
+            'lon' => floatval($this->bottomRightLongitude)
+          )
+        )
+      )
+    );
+    $this->setArrayForCriteria($criteria, $comp);
+  }
   
   public function getArrayForCriteria($criteria)
   {
