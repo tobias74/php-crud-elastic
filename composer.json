@@ -3,5 +3,10 @@
     "description": "a simple create read update delete for elasticsearch in php",
     "type": "library",
     "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "PhpCrudElastic\\": "src/"
+        }
+    },
     "require": {}
 }
