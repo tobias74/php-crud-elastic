@@ -1,6 +1,6 @@
 <?php
 
-namespace Zeitfaden\Elasticsearch;
+namespace PhpCrudElastic;
 
 
 class ElasticsearchFilterCriteriaVisitor
