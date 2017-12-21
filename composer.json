@@ -1,0 +1,7 @@
+{
+    "name": "tobias74/php-crud-elastic",
+    "description": "a simple create read update delete for elasticsearch in php",
+    "type": "library",
+    "license": "MIT",
+    "require": {}
+}
