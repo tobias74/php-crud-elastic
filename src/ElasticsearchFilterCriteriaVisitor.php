@@ -17,6 +17,17 @@ class ElasticsearchFilterCriteriaVisitor
     return $this->mapper;    
   }
   
+  
+  public function visitAnyCriteria($anyCriteria)
+  {
+    $whereArray = array(
+      'bool' => array(
+        'must' => array()
+      )
+    );
+    $this->setArrayForCriteria($anyCriteria, $whereArray);
+  }
+
   public function visitAndCriteria($andCriteria)
   {
     $firstArray = $this->getArrayForCriteria($andCriteria->getFirstCriteria());
