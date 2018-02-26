@@ -26,7 +26,7 @@ class ElasticSearchService
   protected function getClient()
   {
     $hosts = [
-      $this->getConfig()->getElasticSearchHost()
+      $this->getConfig()['elasticSearchHost']
     ];
     
     $clientBuilder = \Elasticsearch\ClientBuilder::create();   
