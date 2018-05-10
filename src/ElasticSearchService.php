@@ -189,6 +189,36 @@ class ElasticSearchService
 
 
 
+  public function aggregate($criteria, $aggregation, $field)
+  {
+    $criteriaVisitor = new ElasticsearchFilterCriteriaVisitor( $this->getMapper() );
+    $criteria->acceptVisitor($criteriaVisitor);
+    $filter = $criteriaVisitor->getArrayForCriteria($criteria);
+
+    $query = array();
+    $query['aggs'] = [
+      $this->getTypeName() => [
+        "filter" => $filter,
+        "aggs" => [
+          "myAggName" => [
+            $aggregation => [
+              "field" => $this->getMapper()->getColumnForField($field)
+            ]
+          ]
+        ]
+      ]
+    ];
+    $params = array();
+    $params['index'] = $this->getIndexName();
+    $params['type'] = $this->getTypeName();
+    $params['body'] = $query;
+    $responseArray = $this->getClient()->search($params);
+    return $responseArray['aggregations'][$this->getTypeName()]['myAggName'];
+  }
+
+
+
+
 
 
 }
