@@ -93,10 +93,12 @@ class ElasticSearchService
     $includeHashtags = false;
     
     $filterCriteria = $elasticSpec['criteria'];
+
+
     $criteriaVisitor = new ElasticsearchFilterCriteriaVisitor( $this->getMapper() );
     $filterCriteria->acceptVisitor($criteriaVisitor);
     $filter = $criteriaVisitor->getArrayForCriteria($filterCriteria);
-    
+
     $sorting = $elasticSpec['sorting'];
     
     if ($sorting['sortType'] === 'byDistanceToPin')

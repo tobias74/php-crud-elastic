@@ -125,7 +125,7 @@ class ElasticsearchFilterCriteriaVisitor
   {
     $column = $this->getMapper()->getColumnForField($criteria->getField());
     $comp = array('range' => array($column => array(
-      'gt' => $critera->getStartValue(),
+      'gt' => $criteria->getStartValue(),
       'lt' => $criteria->getEndValue()
     )));
     $this->setArrayForCriteria($criteria, $comp);
