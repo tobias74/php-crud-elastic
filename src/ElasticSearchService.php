@@ -191,11 +191,22 @@ class ElasticSearchService
 
 
 
-  public function aggregate($criteria, $aggregation, $field)
+  public function aggregate($criteria, $aggregation)
   {
     $criteriaVisitor = new ElasticsearchFilterCriteriaVisitor( $this->getMapper() );
     $criteria->acceptVisitor($criteriaVisitor);
     $filter = $criteriaVisitor->getArrayForCriteria($criteria);
+
+    
+    $aggregationHash = [
+      "field" => $this->getMapper()->getColumnForField($aggregation['field'])
+    ];
+    
+    if (isset($aggregation['size']))
+    {
+      $aggregationHash['size'] = $aggregation['size'];
+    }
+
 
     $query = array();
     $query['aggs'] = [
@@ -203,9 +214,7 @@ class ElasticSearchService
         "filter" => $filter,
         "aggs" => [
           "myAggName" => [
-            $aggregation => [
-              "field" => $this->getMapper()->getColumnForField($field)
-            ]
+            $aggregation['type'] => $aggregationHash
           ]
         ]
       ]
