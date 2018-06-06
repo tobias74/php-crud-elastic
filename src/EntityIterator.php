@@ -38,7 +38,7 @@ class EntityIterator implements \Iterator
         $this->esSpec['search_after'] = $lastItem->esSort;
     }
     
-    $dataHash = $this->getElasticSearchService()->searchBySpecification($this->esSpec);
+    $dataHash = $this->getElasticSearchService()->getBySpecification($this->esSpec);
     return $dataHash['entities'];      
   }
   

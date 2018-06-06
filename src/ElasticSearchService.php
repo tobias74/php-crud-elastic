@@ -13,6 +13,93 @@ class ElasticSearchService
       $this->mapper = $mapper;
   }
 
+    protected function getEntityWords($words, $offset)
+    {
+        $commandWords = array_slice($words,$offset);
+        $entityWords = array();
+        $lastWord="";
+        foreach ($commandWords as $word){
+            if (($word === "And") || ($word === "Or")) {
+                $entityWords[] = $lastWord;
+                $entityWords[] = $word;
+                $lastWord = "";
+            }
+            else {
+                $lastWord.=$word;
+            }
+        }
+        $entityWords[]=$lastWord;
+        return $entityWords;   
+    }
+
+    protected function makeSpecification($entityWords, $arguments)
+    {
+        if ( (array_search('And',$entityWords)!==false) && (array_search('Or',$entityWords)!==false) )
+        {
+            throw new \ErrorException("Error: Combined Or and And? ".print_r($entityWords, true));
+        }
+        else if (array_search('And',$entityWords)!==false)
+        {
+            $operation = 'And';
+        }
+        else if (array_search('Or',$entityWords)!==false)
+        {
+            $operation = 'Or';
+        }
+        else
+        {
+            // this is ok, it's just one word
+        }
+        
+        $combinedWords = array_merge(array_diff($entityWords, ['And','Or']));
+
+        $criteriaMaker = new \PhpVisitableSpecification\CriteriaMaker();
+        foreach ($combinedWords as $index => $entityWord)
+        {
+            if (!isset($criteria))
+            {
+                $criteria = $criteriaMaker->equals(lcfirst($combinedWords[$index]), $arguments[$index]);
+            }
+            else
+            {
+                $command = 'logical'.$operation;
+                $criteria = $criteria->$command( $criteriaMaker->equals(lcfirst($combinedWords[$index]), $arguments[$index]) );
+            }
+        }
+        
+        return $criteria;
+        
+    }
+
+    public function __call($name, $arguments)
+    {
+        $words = $this->splitByCamelCase($name);
+
+        if (($words[0] === "get") && ($words[1] === "By")){
+            $entityWords = $this->getEntityWords($words,2);
+            $criteria = $this->makeSpecification($entityWords, $arguments);
+            return $this->getBySpecification($criteria);
+        }
+        else if (($words[0] === "get") && ($words[1] === "One") && ($words[2] === "By")){
+            $entityWords = $this->getEntityWords($words,3);
+            $criteria = $this->makeSpecification($entityWords, $arguments);
+            return $this->getOneBySpecification($criteria);
+        }
+        else 
+        {
+            throw new \ErrorException('Method not found '.$name);
+        }
+    }
+
+
+    protected function splitByCamelCase($camelCaseString) 
+    {
+        $re = '/(?<=[a-z]|[0-9])(?=[A-Z])/x';
+        $a = preg_split($re, $camelCaseString);
+        return $a;
+    }
+
+
   protected function getConfig()
   {
     return $this->config;  
@@ -86,12 +173,26 @@ class ElasticSearchService
 
 
 
-
-  public function searchBySpecification($elasticSpec, $aggregations = false)
+  public function getOneBySpecification($elasticSpec)
   {
-    
-    $includeHashtags = false;
-    
+    $entities = $this->getBySpecification($elasticSpec);
+    if (count($entities) > 1)
+    {
+      throw \Exception('too many results');
+    }
+    else if (count($entities) === 0)
+    {
+      throw new \Exception('no results');
+    }
+    else 
+    {
+      return $entities[0];
+    }
+  }
+
+
+  protected function getSearchParams($elasticSpec)
+  {
     $filterCriteria = $elasticSpec['criteria'];
 
 
@@ -146,18 +247,18 @@ class ElasticSearchService
       $query['search_after'] = $elasticSpec['search_after'];
     }
 
-    if ($aggregations !== false)
-    {
-      $query['aggs'] = $aggregations;
-    }
-
 	  $params = array();
 	  $params['index'] = $this->getIndexName();
 	  $params['type'] = $this->getTypeName();
 	  $params['body'] = $query;
+    
+    
+    return $params;
+  }
 
-    //echo (json_encode($query));
-
+  public function getBySpecification($elasticSpec)
+  {
+    $params = $this->getSearchParams($elasticSpec);
 	  $responseArray = $this->getClient()->search($params);
 
     $finalResponse = array();
@@ -168,17 +269,7 @@ class ElasticSearchService
       $finalResponse[$index] = $entity;
     }
 
-    $returnHash = array(
-      'entities' => $finalResponse
-    );
-
-
-    if ($aggregations !== false)
-    {
-      $returnHash['aggregations'] = $responseArray['aggregations'];
-    }
-
-    return $returnHash;
+    return $finalResponse;
   }
 
 
