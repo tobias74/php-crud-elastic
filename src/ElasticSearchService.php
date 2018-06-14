@@ -319,6 +319,33 @@ class ElasticSearchService
   }
 
 
+  public function aggregatePassThrough($criteria, $aggregation)
+  {
+    $criteriaVisitor = new ElasticsearchFilterCriteriaVisitor( $this->getMapper() );
+    $criteria->acceptVisitor($criteriaVisitor);
+    $filter = $criteriaVisitor->getArrayForCriteria($criteria);
+
+    
+    $query = array();
+    $query['aggs'] = [
+      $this->getTypeName() => [
+        "filter" => $filter,
+        "aggs" => $aggregation
+      ]
+    ];
+    $params = array();
+    $params['index'] = $this->getIndexName();
+    $params['type'] = $this->getTypeName();
+    $params['body'] = $query;
+    $responseArray = $this->getClient()->search($params);
+    return $responseArray['aggregations'][$this->getTypeName()];
+  }
+
+  public function getColumnForField($field)
+  {
+    return $this->getMapper()->getColumnForField($field);
+  }
+
 
 
 
