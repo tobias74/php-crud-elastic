@@ -144,15 +144,22 @@ class ElasticSearchService
     return $this->getMapper()->mapEntityToHash($station);
   }
 
-  public function indexEntity($entity)
+
+  public function indexEntityWithoutRefresh($entity)
   {
     $params = array();
     $params['body']  = $this->mapEntityToHash($entity);;
     $params['index'] = $this->getIndexName();
     $params['type']  = $this->getTypeName();
     $params['id']    = $entity->getId();
+    //$params['client']['future'] = 'lazy';
 
-    $ret = $this->getClient()->index($params);
+    return $this->getClient()->index($params);
+  }
+
+  public function indexEntity($entity)
+  {
+    $this->indexEntityWithoutRefresh($entity);
     
     $this->getClient()->indices()->refresh(array(
       'index' => $this->getIndexName()
