@@ -172,12 +172,12 @@ class ElasticsearchFilterCriteriaVisitor
       'geo_bounding_box' => array(
         $column => array(
           'top_left' => array(
-            'lat' => floatval($criteria->topLeft['latitude']),
-            'lon' => floatval($this->topLeft['longitude'])
+            'lat' => floatval($criteria->topLeftLatitude),
+            'lon' => floatval($criteria->topLeftLongitude)
           ),
           'bottom_right' => array(
-            'lat' => floatval($this->bottomRight['latitude']),
-            'lon' => floatval($this->bottomRight['longitude'])
+            'lat' => floatval($criteria->bottomRightLatitude),
+            'lon' => floatval($criteria->bottomRightLongitude)
           )
         )
       )

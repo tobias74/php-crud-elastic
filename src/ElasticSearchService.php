@@ -366,7 +366,6 @@ class ElasticSearchService
     $criteria->acceptVisitor($criteriaVisitor);
     $filter = $criteriaVisitor->getArrayForCriteria($criteria);
 
-    
     $query = array();
     $query['query'] = $filter;
     $query['aggs'] = $aggregation;
