@@ -129,12 +129,12 @@ class ElasticSearchService
     $this->getClient()->indices()->create($indexParams);
   }
 
-  protected function getIndexName()
+  public function getIndexName()
   {
     return $this->getMapper()->getIndexName();
   }
 
-  protected function getTypeName()
+  public function getTypeName()
   {
     return $this->getMapper()->getTypeName();
   }
@@ -154,7 +154,9 @@ class ElasticSearchService
     $params['id']    = $entity->getId();
     //$params['client']['future'] = 'lazy';
 
-    return $this->getClient()->index($params);
+    $returnValue = $this->getClient()->index($params);
+
+    return $returnValue;
   }
 
   public function indexEntity($entity)
@@ -198,51 +200,73 @@ class ElasticSearchService
   }
 
 
-  protected function getSearchParams($elasticSpec)
+  protected function getFilter($filterCriteria)
   {
-    $filterCriteria = $elasticSpec['criteria'];
-
-
     $criteriaVisitor = new ElasticsearchFilterCriteriaVisitor( $this->getMapper() );
     $filterCriteria->acceptVisitor($criteriaVisitor);
     $filter = $criteriaVisitor->getArrayForCriteria($filterCriteria);
+    return $filter;    
+  }
 
-    $sorting = $elasticSpec['sorting'];
+  protected function getDeleteParams($elasticSpec)
+  {
+    $query = array(
+      'query' => $this->getFilter($elasticSpec['criteria'])
+    );
+
+	  $params = array();
+	  $params['index'] = $this->getIndexName();
+	  $params['type'] = $this->getTypeName();
+	  $params['body'] = $query;
     
-    if ($sorting['sortType'] === 'byDistanceToPin')
+    return $params;
+  }
+
+  protected function getSearchParams($elasticSpec)
+  {
+    if (isset($elasticSpec['sorting']))
     {
-      $sort = array(
-        '_geo_distance' => array(
-            $sorting['sortField'] => array(
-            'lat' => floatval($sorting['latitude']), 
-            'lon' => floatval($sorting['longitude'])
-        ),
-          'order' => 'asc',
-          'unit' => 'km'
-        ),
-        'id' => array(
-        'order' => 'asc'
-        )
-      );
+      $sorting = $elasticSpec['sorting'];
+      
+      if ($sorting['sortType'] === 'byDistanceToPin')
+      {
+        $sort = array(
+          '_geo_distance' => array(
+              $sorting['sortField'] => array(
+              'lat' => floatval($sorting['latitude']), 
+              'lon' => floatval($sorting['longitude'])
+          ),
+            'order' => 'asc',
+            'unit' => 'km'
+          ),
+          'id' => array(
+          'order' => 'asc'
+          )
+        );
+      }
+      else if ($sorting['sortType'] === 'byField')
+      {
+        $sort = array(
+          $sorting['sortField'] => $sorting['sortOrder'],
+          'id'=> 'asc'  
+        );    
+      }
+      else {
+        $sort = array(
+          'id'=> 'asc'  
+        );    
+      }
     }
-    else if ($sorting['sortType'] === 'byField')
+    else
     {
-      $sort = array(
-        $sorting['sortField'] => $sorting['sortOrder'],
-        'id'=> 'asc'  
-      );    
-    }
-    else {
-      $sort = array(
-        'id'=> 'asc'  
-      );    
+      $sort = array();
     }
     
     $from = $elasticSpec['offset'];
     $size = $elasticSpec['limit'];
 
     $query = array(
-      'query' => $filter,
+      'query' => $this->getFilter($elasticSpec['criteria']),
       'sort' => $sort,
       'from' => $from,
       'size' => $size
@@ -266,7 +290,8 @@ class ElasticSearchService
   public function getBySpecification($elasticSpec)
   {
     $params = $this->getSearchParams($elasticSpec);
-	  $responseArray = $this->getClient()->search($params);
+
+    $responseArray = $this->getClient()->search($params);
 
     $finalResponse = array();
 
@@ -283,6 +308,15 @@ class ElasticSearchService
   protected function mapHashToEntity($stationData)
   {
     return $this->getMapper()->mapHashToEntity($stationData);
+  }
+
+
+
+  public function deleteBySpecification($elasticSpec, $params = array())
+  {
+    $params = array_merge($this->getDeleteParams($elasticSpec), $params);
+	  $result = $this->getClient()->deleteByQuery($params);
+	  return $result;
   }
 
 
@@ -325,6 +359,28 @@ class ElasticSearchService
     return $responseArray['aggregations'][$this->getTypeName()]['myAggName'];
   }
 
+
+  public function aggregatePassThroughDirectly($criteria, $aggregation)
+  {
+    $criteriaVisitor = new ElasticsearchFilterCriteriaVisitor( $this->getMapper() );
+    $criteria->acceptVisitor($criteriaVisitor);
+    $filter = $criteriaVisitor->getArrayForCriteria($criteria);
+
+    
+    $query = array();
+    $query['query'] = $filter;
+    $query['aggs'] = $aggregation;
+    
+    $params = array();
+    $params['index'] = $this->getIndexName();
+    $params['type'] = $this->getTypeName();
+    $params['body'] = $query;
+    
+    error_log(json_encode($params));
+    
+    $responseArray = $this->getClient()->search($params);
+    return $responseArray['aggregations'];
+  }
 
   public function aggregatePassThrough($criteria, $aggregation)
   {

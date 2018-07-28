@@ -152,6 +152,18 @@ class ElasticsearchFilterCriteriaVisitor
     );
     $this->setArrayForCriteria($criteria, $comp);
   }
+
+  public function visitGeoShapeCriteria($criteria)
+  {
+    $column = $this->getMapper()->getColumnForField($criteria->getGeometryField());
+    $comp = array(
+      'geo_shape' => array(
+        $column => $criteria->getGeoShapeDefinition()
+      )
+    );
+    $this->setArrayForCriteria($criteria, $comp);
+  }
+
   
   public function visitWithinBoundingBoxCriteria($criteria)
   {
@@ -160,12 +172,12 @@ class ElasticsearchFilterCriteriaVisitor
       'geo_bounding_box' => array(
         $column => array(
           'top_left' => array(
-            'lat' => floatval($this->topLeftLatitude),
-            'lon' => floatval($this->topLeftLongitude)
+            'lat' => floatval($criteria->topLeft['latitude']),
+            'lon' => floatval($this->topLeft['longitude'])
           ),
           'bottom_right' => array(
-            'lat' => floatval($this->bottomRightLatitude),
-            'lon' => floatval($this->bottomRightLongitude)
+            'lat' => floatval($this->bottomRight['latitude']),
+            'lon' => floatval($this->bottomRight['longitude'])
           )
         )
       )

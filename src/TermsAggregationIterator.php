@@ -3,17 +3,20 @@ namespace PhpCrudElastic;
 
 
 
-class EntityIterator implements \Iterator
+class TermsAggregationIterator implements \Iterator
 {
   protected $resultBuffer=array();
   protected $reachedEnd=false;
   protected $position = 0;
+  protected $afterKey = false;
+  protected $minDocCount = 1;
 
-  public function __construct($esService, $esSpec)
+  public function __construct($esService, $criteria, $field)
   {
     $this->position = 0;
     $this->esService = $esService;
-    $this->esSpec = $esSpec;
+    $this->criteria = $criteria;
+    $this->field = $field;
   }
 
   protected function getElasticSearchService() 
@@ -21,19 +24,55 @@ class EntityIterator implements \Iterator
     return $this->esService;
   }
 
-  protected function executeRequest()
+  public function executeRequest()
   {
-    $this->esSpec['offset'] = 0;
-    $this->esSpec['limit'] = 5;
-    
-    $lastItem = end($this->resultBuffer);
-    
-    if ($lastItem) {
-        $this->esSpec['search_after'] = $lastItem->esSort;
+    $aggs = array(
+        "my_buckets" => array(
+            "composite" => array(
+                "size" => 100,
+                "sources" => array(
+                    "item" => array(
+                        "terms" => array(
+                            "field" => $this->field,
+                            //"min_doc_count" => $this->minDocCount
+                        )
+                    )
+                )
+            )
+        )
+    );
+
+    if ($this->afterKey) {
+        $aggs['my_buckets']['composite']['after'] = $this->afterKey;
     }
 
-    return $this->getElasticSearchService()->getBySpecification($this->esSpec);
+    $results = $this->getElasticSearchService()->aggregatePassThroughDirectly($this->criteria, $aggs);
+    
+    $this->afterKey = $results['my_buckets']['after_key'] ?? $this->afterKey;
+    
+    $itemIds = array_map(function($item){
+      return $item['key']['item'];
+    }, $results['my_buckets']['buckets']);
+
+    return $itemIds;
+
   }
+  
+  public function setMinDocCount($val)
+  {
+    $this->minDocCount = $val;
+  }
+  
+  public function setAfterKey($val)
+  {
+    $this->afterKey = $val;
+  }
+  
+  public function getAfterKey()
+  {
+    return $this->afterKey;
+  }
+  
   
   protected function getNextBatch()
   {
@@ -82,7 +121,7 @@ class EntityIterator implements \Iterator
   public function key()
   {
     $this->ensureReady();
-    return $this->resultBuffer[$this->position]->getId();
+    return $this->position;
   }
   
   public function valid()
